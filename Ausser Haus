@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Außer-Haus Kunden & Bestellungen</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 15px;
+      background: #f7f7f7;
+      color: #333;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    input, select, button {
+      font-size: 1rem;
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #3a86ff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #265dcc;
+    }
+    .container {
+      max-width: 480px;
+      margin: auto;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+    }
+    .kunde {
+      background: #e8f0fe;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .kunde-header {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .bestellung {
+      margin-left: 10px;
+      font-size: 0.95rem;
+      color: #555;
+    }
+    .loeschen-btn {
+      background: #ff4d4d;
+      border: none;
+      color: white;
+      padding: 3px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Außer-Haus Kunden</h1>
+
+    <h2>Neuen Kunden hinzufügen</h2>
+    <input type="text" id="name" placeholder="Name des Kunden" />
+    <input type="text" id="adresse" placeholder="Adresse" />
+    <button onclick="kundeHinzufuegen()">Kunde hinzufügen</button>
+
+    <h2>Bestellung hinzufügen</h2>
+    <select id="kundeSelect">
+      <option value="">-- Kunde wählen --</option>
+    </select>
+    <select id="menuSelect">
+      <option value="">-- Menü auswählen --</option>
+      <option value="Menü 1">Menü 1</option>
+      <option value="Menü 2">Menü 2</option>
+      <option value="Menü 3">Menü 3</option>
+      <option value="Kuchen">Kuchen</option>
+    </select>
+    <input type="number" id="menge" min="1" value="1" />
+    <button onclick="bestellungHinzufuegen()">Bestellung hinzufügen</button>
+
+    <h2>Kunden & Bestellungen</h2>
+    <div id="kundenListe"></div>
+  </div>
+
+  <script>
+    // Daten laden oder leeres Array
+    let kunden = JSON.parse(localStorage.getItem("kunden") || "[]");
+    let bestellungen = JSON.parse(localStorage.getItem("bestellungen") || "[]");
+
+    // Kundenliste anzeigen und Kundenauswahl updaten
+    function zeigeKunden() {
+      const liste = document.getElementById("kundenListe");
+      const select = document.getElementById("kundeSelect");
+      liste.innerHTML = "";
+      select.innerHTML = '<option value="">-- Kunde wählen --</option>';
+
+      kunden.forEach((kunde, index) => {
+        // Kundenliste anzeigen
+        const div = document.createElement("div");
+        div.className = "kunde";
+        const header = document.createElement("div");
+        header.className = "kunde-header";
+        header.innerHTML = `<span>${kunde.name} (${kunde.adresse})</span>`;
+
+        const loeschBtn = document.createElement("button");
+        loeschBtn.className = "loeschen-btn";
+        loeschBtn.textContent = "Löschen";
+        loeschBtn.onclick = () => {
+          if (confirm(`Kunden "${kunde.name}" wirklich löschen?`)) {
+            kundeLoeschen(index);
+          }
+        };
+        header.appendChild(loeschBtn);
+        div.appendChild(header);
+
+        // Bestellungen zu Kunden filtern
+        const kundeBestellungen = bestellungen.filter(b => b.kundenIndex === index);
+        if (kundeBestellungen.length === 0) {
+          const keineBestellung = document.createElement("div");
+          keineBestellung.className = "bestellung";
+          keineBestellung.textContent = "Keine Bestellungen";
+          div.appendChild(keineBestellung);
+        } else {
+          kundeBestellungen.forEach(b => {
+            const bDiv = document.createElement("div");
+            bDiv.className = "bestellung";
+            bDiv.textContent = `${b.menge} × ${b.menu}`;
+            div.appendChild(bDiv);
+          });
+        }
+
+        liste.appendChild(div);
+
+        // Kundenauswahl im Select updaten
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = kunde.name;
+        select.appendChild(option);
+      });
+    }
+
+    // Kunde hinzufügen
+    function kundeHinzufuegen() {
+      const name = document.getElementById("name").value.trim();
+      const adresse = document.getElementById("adresse").value.trim();
+
+      if (!name || !adresse) {
+        alert("Bitte Name und Adresse eingeben!");
+        return;
+      }
+
+      kunden.push({ name, adresse });
+      localStorage.setItem("kunden", JSON.stringify(kunden));
+      document.getElementById("name").value = "";
+      document.getElementById("adresse").value = "";
+      zeigeKunden();
+    }
+
+    // Bestellung hinzufügen
+    function bestellungHinzufuegen() {
+      const kundeIndex = document.getElementById("kundeSelect").value;
+      const menu = document.getElementById("menuSelect").value;
+      const menge = parseInt(document.getElementById("menge").value);
+
+      if (kundeIndex === "" || menu === "" || !menge || menge < 1) {
+        alert("Bitte Kunde, Menü und Menge korrekt auswählen!");
+        return;
+      }
+
+      bestellungen.push({
+        kundenIndex: parseInt(kundeIndex),
+        menu,
+        menge,
+      });
+
+      localStorage.setItem("bestellungen", JSON.stringify(bestellungen));
+      document.getElementById("menuSelect").value = "";
+      document.getElementById("menge").value = 1;
+      document.getElementById("kundeSelect").value = "";
+      zeigeKunden();
+    }
+
+    // Kunde löschen (und Bestellungen des Kunden entfernen)
+    function kundeLoeschen(index) {
+      kunden.splice(index, 1);
+      // Bestellungen des Kunden löschen
+      bestellungen = bestellungen.filter(b => b.kundenIndex !== index);
+      // Indizes in Bestellungen anpassen
+      bestellungen = bestellungen.map(b => {
+        if (b.kundenIndex > index) b.kundenIndex--;
+        return b;
+      });
+
+      localStorage.setItem("kunden", JSON.stringify(kunden));
+      localStorage.setItem("bestellungen", JSON.stringify(bestellungen));
+      zeigeKunden();
+    }
+
+    // Initial laden
+    zeigeKunden();
+  </script>
+</body>
+</html>
